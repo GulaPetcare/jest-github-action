@@ -36,8 +36,10 @@ export async function run() {
     // octokit
     const octokit = github.getOctokit(token)
 
+    core.startGroup("Parsing results")
     // Parse results
     const results = parseResults(RESULTS_FILE)
+    core.endGroup()
 
     core.startGroup("Adding check result")
     // Checks
@@ -164,7 +166,7 @@ function getCheckPayload(results: FormattedTestResults, cwd: string) {
 
 function getJestCommand(resultsFile: string) {
   let cmd = core.getInput("test-command", { required: false })
-  let jestOptions = `--testLocationInResults --json --outputFile=${resultsFile}`
+  let jestOptions = `--testLocationInResults --json --outputFile="${resultsFile}"`
   if (shouldCommentCoverage()) {
     jestOptions += " --coverage"
   }
@@ -181,9 +183,8 @@ function parseResults(resultsFile: string): FormattedTestResults {
 
 async function execJest(cmd: string) {
   try {
-    core.startGroup("Running test command")
-    console.log(cmd)
-    await exec(cmd, [], { silent: true, ignoreReturnCode: true })
+    core.startGroup(cmd)
+    await exec(cmd, [], { ignoreReturnCode: true })
     console.debug("Jest command executed")
   } catch (e) {
     console.debug("Jest execution failed. Tests have likely failed.")
