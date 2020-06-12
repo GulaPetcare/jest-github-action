@@ -2,8 +2,7 @@ import { sep, join } from "path"
 import { readFileSync } from "fs"
 import { exec } from "@actions/exec"
 import * as core from "@actions/core"
-import { GitHub, context } from "@actions/github"
-import type { Octokit } from "@octokit/rest"
+import github from "@actions/github"
 import flatMap from "lodash/flatMap"
 import filter from "lodash/filter"
 import map from "lodash/map"
@@ -20,8 +19,12 @@ export async function run() {
   const RESULTS_FILE = join(CWD, "jest.results.json")
 
   try {
-    const token = process.env.GITHUB_TOKEN
+    let token = process.env.GITHUB_TOKEN
     if (token === undefined) {
+      token = core.getInput("GITHUB_TOKEN")
+    }
+
+    if (!token) {
       core.error("GITHUB_TOKEN not set.")
       core.setFailed("GITHUB_TOKEN not set.")
       return
@@ -32,14 +35,13 @@ export async function run() {
     await execJest(cmd)
 
     // octokit
-    const octokit = new GitHub(token)
+    const octokit = github.getOctokit(token)
 
     // Parse results
     const results = parseResults(RESULTS_FILE)
 
     // Checks
-    const checkPayload = getCheckPayload(results, CWD)
-    await octokit.checks.create(checkPayload)
+    await octokit.checks.create(getCheckPayload(results, CWD))
 
     // Coverage comments
     if (shouldCommentCoverage()) {
@@ -60,9 +62,9 @@ export async function run() {
   }
 }
 
-async function deletePreviousComments(octokit: GitHub) {
+async function deletePreviousComments(octokit: ReturnType<typeof github.getOctokit>) {
   const { data } = await octokit.issues.listComments({
-    ...context.repo,
+    ...github.context.repo,
     per_page: 100,
     issue_number: getPullId(),
   })
@@ -72,7 +74,9 @@ async function deletePreviousComments(octokit: GitHub) {
         (c) =>
           c.user.login === "github-actions[bot]" && c.body.startsWith(COVERAGE_HEADER),
       )
-      .map((c) => octokit.issues.deleteComment({ ...context.repo, comment_id: c.id })),
+      .map((c) =>
+        octokit.issues.deleteComment({ ...github.context.repo, comment_id: c.id }),
+      ),
   )
 }
 
@@ -100,6 +104,10 @@ export function getCoverageTable(
   }
 
   for (const [filename, data] of Object.entries(covMap.data || {})) {
+    // @ts-ignore
+    if (data.toSummary == null) continue
+
+    // @ts-ignore
     const { data: summary } = data.toSummary()
     rows.push([
       filename.replace(cwd, ""),
@@ -114,8 +122,8 @@ export function getCoverageTable(
 }
 
 function getCommentPayload(body: string) {
-  const payload: Octokit.IssuesCreateCommentParams = {
-    ...context.repo,
+  const payload = {
+    ...github.context.repo,
     body,
     issue_number: getPullId(),
   }
@@ -123,12 +131,12 @@ function getCommentPayload(body: string) {
 }
 
 function getCheckPayload(results: FormattedTestResults, cwd: string) {
-  const payload: Octokit.ChecksCreateParams = {
-    ...context.repo,
+  const payload = {
+    ...github.context.repo,
     head_sha: getSha(),
     name: ACTION_NAME,
-    status: "completed",
-    conclusion: results.success ? "success" : "failure",
+    status: undefined,
+    conclusion: undefined,
     output: {
       title: results.success ? "Jest tests passed" : "Jest tests failed",
       text: getOutputText(results),
@@ -141,6 +149,12 @@ function getCheckPayload(results: FormattedTestResults, cwd: string) {
       annotations: getAnnotations(results, cwd),
     },
   }
+
+  // @ts-ignore
+  payload.status = "completed" as "completed"
+  // @ts-ignore
+  payload.conclusion = results.success ? "success" : "failure"
+
   console.debug("Check payload: %j", payload)
   return payload
 }
@@ -150,8 +164,8 @@ function getJestCommand(resultsFile: string) {
   const jestOptions = `--testLocationInResults --json ${
     shouldCommentCoverage() ? "--coverage" : ""
   } ${
-    shouldRunOnlyChangedFiles() && context.payload.pull_request?.base.ref
-      ? "--changedSince=" + context.payload.pull_request?.base.ref
+    shouldRunOnlyChangedFiles() && github.context.payload.pull_request?.base.ref
+      ? "--changedSince=" + github.context.payload.pull_request?.base.ref
       : ""
   } --outputFile=${resultsFile}`
   const isNpm = cmd.startsWith("npm") || cmd.startsWith("npx")
@@ -176,17 +190,24 @@ async function execJest(cmd: string) {
 }
 
 function getPullId(): number {
-  return context.payload.pull_request?.number ?? 0
+  return github.context.payload.pull_request?.number ?? 0
 }
 
 function getSha(): string {
-  return context.payload.pull_request?.head.sha ?? context.sha
+  return github.context.payload.pull_request?.head.sha ?? github.context.sha
 }
 
 const getAnnotations = (
   results: FormattedTestResults,
   cwd: string,
-): Octokit.ChecksCreateParamsOutputAnnotations[] => {
+): Array<{
+  path: string
+  start_line: number
+  end_line: number
+  annotation_level: "failure"
+  title: string
+  message: string
+}> => {
   if (results.success) {
     return []
   }
