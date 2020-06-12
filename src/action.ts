@@ -18,6 +18,7 @@ export async function run() {
   const CWD = process.cwd() + sep
   const RESULTS_FILE = join(CWD, "jest.results.json")
   console.log(JSON.stringify(github.context))
+  console.log(JSON.stringify(process.env))
 
   try {
     let token = process.env.GITHUB_TOKEN
