@@ -16,12 +16,7 @@
     "type": "git",
     "url": "git+https://github.com/mattallty/jest-github-action.git"
   },
-  "keywords": [
-    "GitHub",
-    "Actions",
-    "Jest",
-    "Pull request"
-  ],
+  "keywords": ["GitHub", "Actions", "Jest", "Pull request"],
   "author": "Matthias Etienne <matthias@etienne.in>",
   "license": "MIT",
   "bugs": {
@@ -30,22 +25,17 @@
   "homepage": "https://github.com/mattallty/jest-github-action#readme",
   "jest": {
     "clearMocks": true,
-    "moduleFileExtensions": [
-      "js",
-      "ts"
-    ],
+    "moduleFileExtensions": ["js", "ts"],
     "testEnvironment": "node",
-    "testMatch": [
-      "**/*.test.ts"
-    ],
+    "testMatch": ["**/*.test.ts"],
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
     "verbose": true
   },
   "dependencies": {
-    "@actions/core": "^1.1.1",
-    "@actions/exec": "^1.0.3",
+    "@actions/core": "^3.0.0",
+    "@actions/exec": "^3.0.0",
     "@actions/github": "^3.0.0",
     "lodash": "^4.17.15",
     "markdown-table": "^2.0.0",

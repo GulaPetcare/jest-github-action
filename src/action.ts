@@ -17,7 +17,7 @@ const COVERAGE_HEADER = ":loop: **Code coverage**\n\n"
 export async function run() {
   const CWD = process.cwd() + sep
   const RESULTS_FILE = join(CWD, "jest.results.json")
-  core.info(JSON.stringify(github.context))
+  console.log(JSON.stringify(github.context))
 
   try {
     let token = process.env.GITHUB_TOKEN
