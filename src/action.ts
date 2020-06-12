@@ -16,8 +16,6 @@ const COVERAGE_HEADER = ":loop: **Code coverage**\n\n"
 export async function run() {
   const CWD = process.cwd() + sep
   const RESULTS_FILE = join(CWD, "jest.results.json")
-  console.log(JSON.stringify(github.context))
-  console.log(JSON.stringify(process.env))
 
   try {
     let token = process.env.GITHUB_TOKEN
@@ -41,21 +39,25 @@ export async function run() {
     // Parse results
     const results = parseResults(RESULTS_FILE)
 
+    core.startGroup("Adding check result")
     // Checks
     await octokit.checks.create(getCheckPayload(results, CWD))
+    core.endGroup()
 
     // Coverage comments
     if (shouldCommentCoverage()) {
+      core.startGroup("Adding coverage comment")
       const comment = getCoverageTable(results, CWD)
       if (comment) {
         await deletePreviousComments(octokit)
         const commentPayload = getCommentPayload(comment)
         await octokit.issues.createComment(commentPayload)
       }
+      core.endGroup()
     }
 
     if (!results.success) {
-      core.setFailed("Some jest tests failed.")
+      core.setFailed("Some tests failed.")
     }
   } catch (error) {
     console.error(error)
@@ -162,30 +164,32 @@ function getCheckPayload(results: FormattedTestResults, cwd: string) {
 
 function getJestCommand(resultsFile: string) {
   let cmd = core.getInput("test-command", { required: false })
-  const jestOptions = `--testLocationInResults --json ${
-    shouldCommentCoverage() ? "--coverage" : ""
-  } ${
-    shouldRunOnlyChangedFiles() && github.context.payload.pull_request?.base.ref
-      ? "--changedSince=" + github.context.payload.pull_request?.base.ref
-      : ""
-  } --outputFile=${resultsFile}`
-  core.debug("Final test command: " + cmd)
+  let jestOptions = `--testLocationInResults --json --outputFile=${resultsFile}`
+  if (shouldCommentCoverage()) {
+    jestOptions += " --coverage"
+  }
+  if (shouldRunOnlyChangedFiles() && github.context.payload.pull_request?.base.ref) {
+    jestOptions += " --changedSince=" + github.context.payload.pull_request?.base.ref
+  }
   return cmd.replace("{{args}}", jestOptions)
 }
 
 function parseResults(resultsFile: string): FormattedTestResults {
   const results = JSON.parse(readFileSync(resultsFile, "utf-8"))
-  console.debug("Jest results: %j", results)
   return results
 }
 
 async function execJest(cmd: string) {
   try {
+    core.startGroup("Running test command")
+    console.log(cmd)
     await exec(cmd, [], { silent: true })
     console.debug("Jest command executed")
   } catch (e) {
     console.debug("Jest execution failed. Tests have likely failed.")
   }
+
+  core.endGroup()
 }
 
 function getPullId(): number {
