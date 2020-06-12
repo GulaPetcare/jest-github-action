@@ -183,7 +183,7 @@ async function execJest(cmd: string) {
   try {
     core.startGroup("Running test command")
     console.log(cmd)
-    await exec(cmd, [], { silent: true })
+    await exec(cmd, [], { silent: true, ignoreReturnCode: true })
     console.debug("Jest command executed")
   } catch (e) {
     console.debug("Jest execution failed. Tests have likely failed.")
