@@ -170,10 +170,8 @@ function getJestCommand(resultsFile: string) {
       ? "--changedSince=" + github.context.payload.pull_request?.base.ref
       : ""
   } --outputFile=${resultsFile}`
-  const isNpm = cmd.startsWith("npm") || cmd.startsWith("npx")
-  cmd += (isNpm ? " -- " : " ") + jestOptions
   core.debug("Final test command: " + cmd)
-  return cmd
+  return cmd.replace("{{args}}", jestOptions)
 }
 
 function parseResults(resultsFile: string): FormattedTestResults {
