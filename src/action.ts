@@ -11,7 +11,6 @@ import table from "markdown-table"
 import { createCoverageMap, CoverageMapData } from "istanbul-lib-coverage"
 import type { FormattedTestResults } from "@jest/test-result/build/types"
 
-const ACTION_NAME = "jest-github-action"
 const COVERAGE_HEADER = ":loop: **Code coverage**\n\n"
 
 export async function run() {
@@ -136,7 +135,7 @@ function getCheckPayload(results: FormattedTestResults, cwd: string) {
   const payload = {
     ...github.context.repo,
     head_sha: getSha(),
-    name: ACTION_NAME,
+    name: core.getInput("command-name"),
     status: undefined,
     conclusion: undefined,
     output: {

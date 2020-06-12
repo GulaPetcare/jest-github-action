@@ -4,6 +4,9 @@ branding:
   icon: "check"
   color: "blue"
 inputs:
+  command-name:
+    description: "The name to report with"
+    required: true
   test-command:
     description: "The test command to run"
     required: false
