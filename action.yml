@@ -1,4 +1,4 @@
-name: "Jest Annotations & Coverage"
+name: "PetsApp Jest Annotations & Coverage"
 description: "Jest action adding checks and annotations to your pull requests and comment them with code coverage results."
 branding:
   icon: "check"
